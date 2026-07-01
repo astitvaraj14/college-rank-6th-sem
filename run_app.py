@@ -126,7 +126,7 @@ def get_leaderboard():
     try:
         all_students = list(students_col.find(
             {}, 
-            {'_id': 0, 'usn': 1, 'name': 1, 'total_marks': 1, 'sgpa': 1, 'sgpa_float': 1, 'percentage': 1}
+            {'_id': 0, 'usn': 1, 'name': 1, 'total_marks': 1, 'sgpa': 1, 'sgpa_float': 1, 'percentage': 1, 'class_result': 1}
         ))
         
         all_students.sort(key=lambda x: x.get('total_marks', 0), reverse=True)
@@ -159,7 +159,31 @@ def get_analysis():
     result_list = []
 
     try:
-        if subject_code.startswith('class_'):
+        if subject_code == 'not_eligible':
+            # --- NOT ELIGIBLE (X / NE) STUDENTS ---
+            # VTU marks a subject 'X' or 'NE' when a student didn't meet
+            # attendance/eligibility criteria for that exam - distinct from
+            # an actual Fail ('F'), Absent ('A'), or Withheld ('W').
+            NE_CODES = {'X', 'NE'}
+            students = list(students_col.find({}, {'_id': 0, 'usn': 1, 'name': 1, 'subjects': 1}))
+            stats['total'] = len(students)
+
+            for s in students:
+                ne_subjects = [sub for sub in s['subjects'] if sub['result'].upper() in NE_CODES]
+                if ne_subjects:
+                    stats['fail'] += 1
+                    result_list.append({
+                        'usn': s['usn'], 'name': s['name'],
+                        'marks': ', '.join(f"{sub['code']}" for sub in ne_subjects),
+                        'status': 'NOT ELIGIBLE'
+                    })
+                else:
+                    stats['pass'] += 1
+
+            # Sort by USN
+            result_list.sort(key=lambda x: x['usn'])
+
+        elif subject_code.startswith('class_'):
             # --- CLASS EQUIVALENCE LOGIC (LIST FILTER) ---
             students = list(students_col.find({}, {'_id': 0, 'usn': 1, 'name': 1, 'total_marks': 1, 'subjects': 1}))
             class_type = subject_code.split('_')[1]

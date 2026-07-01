@@ -141,6 +141,7 @@
                                 <th class="sortable" onclick="toggleSort('total_marks')">Marks <span id="icon-total_marks">▼</span></th>
                                 <th class="sortable" onclick="toggleSort('sgpa')">SGPA <span id="icon-sgpa"></span></th>
                                 <th>Percentage</th>
+                                <th>Category</th>
                             </tr>
                         </thead>
                         <tbody id="leaderboard-body"></tbody>
@@ -159,6 +160,7 @@
                             <select id="subject-select" class="form-select form-select-lg" onchange="fetchAnalysis()">
                                 <optgroup label="General">
                                     <option value="overall" selected>Overall Failures</option>
+                                    <option value="not_eligible">Not Eligible (X / NE) Students</option>
                                 </optgroup>
                                 <optgroup label="Class Equivalence (Based on %)">
                                     <option value="class_fcd">First Class with Distinction (>= 70%)</option>
@@ -217,7 +219,7 @@
     </div>
 </div>
 
-<div class="credit-footer">Made by Astitva & Ananya</div>
+<div class="credit-footer">Made with ❤️ by Astitva & Arsalan</div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
@@ -303,7 +305,7 @@
 
     async function fetchLeaderboard() {
         const tbody = document.getElementById('leaderboard-body');
-        tbody.innerHTML = '<tr><td colspan="6">Loading...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7">Loading...</td></tr>';
         try {
             const res = await fetch(`/leaderboard?sort=${sortField}&order=${sortOrder}`);
             const json = await res.json();
@@ -312,14 +314,14 @@
                 displayLeaderboard(allLeaderboardData);
             }
         } catch (err) { 
-            tbody.innerHTML = '<tr><td colspan="6" class="text-danger">Failed to load</td></tr>'; 
+            tbody.innerHTML = '<tr><td colspan="7" class="text-danger">Failed to load</td></tr>'; 
         }
     }
 
     function displayLeaderboard(data) {
         const tbody = document.getElementById('leaderboard-body');
         if (data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-muted">No results found</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="text-muted">No results found</td></tr>';
             return;
         }
 
@@ -327,6 +329,14 @@
         data.forEach(s => {
             let cls = s.rank === 1 ? 'rank-1' : s.rank === 2 ? 'rank-2' : s.rank === 3 ? 'rank-3' : '';
             let icon = s.rank === 1 ? '🥇' : s.rank === 2 ? '🥈' : s.rank === 3 ? '🥉' : '';
+
+            const category = s.class_result || 'N/A';
+            let badgeClass = 'bg-light text-dark';
+            if (category.includes('Distinction')) badgeClass = 'badge-fcd';
+            else if (category.includes('First')) badgeClass = 'badge-fc';
+            else if (category.includes('Second')) badgeClass = 'badge-sc';
+            else if (category.includes('Fail')) badgeClass = 'badge-fail';
+
             html += `<tr class="${cls}">
                 <td>${icon} #${s.rank}</td>
                 <td class="fw-bold">${s.usn}</td>
@@ -334,6 +344,7 @@
                 <td class="text-primary fw-bold">${s.total_marks}</td>
                 <td class="text-success fw-bold">${s.sgpa}</td>
                 <td class="text-warning fw-bold">${s.percentage}</td>
+                <td><span class="class-badge ${badgeClass}" style="font-size:0.8rem; padding:0.3rem 0.7rem;">${category}</span></td>
             </tr>`;
         });
         tbody.innerHTML = html;
@@ -384,7 +395,9 @@
                 if (json.data.length > 0) {
                     let html = '';
                     json.data.forEach(s => {
-                        let statusColor = (s.status === 'FAIL') ? 'text-danger fw-bold' : 'text-primary fw-bold';
+                        let statusColor = (s.status === 'FAIL') ? 'text-danger fw-bold'
+                            : (s.status === 'NOT ELIGIBLE' || s.status === 'X' || s.status === 'NE') ? 'text-warning fw-bold'
+                            : 'text-primary fw-bold';
                         html += `<tr><td class="fw-bold">${s.usn}</td><td>${s.name}</td><td class="fw-bold">${s.marks}</td><td class="${statusColor}">${s.status}</td></tr>`;
                     });
                     tbody.innerHTML = html;
